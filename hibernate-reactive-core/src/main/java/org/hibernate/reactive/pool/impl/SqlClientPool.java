@@ -7,6 +7,7 @@ package org.hibernate.reactive.pool.impl;
 
 import java.util.concurrent.CompletionStage;
 
+import io.vertx.core.Vertx;
 import org.hibernate.engine.jdbc.spi.SqlStatementLogger;
 import org.hibernate.reactive.pool.ReactiveConnection;
 import org.hibernate.reactive.pool.ReactiveConnectionPool;
@@ -72,6 +73,12 @@ public abstract class SqlClientPool implements ReactiveConnectionPool {
 
 	private CompletionStage<ReactiveConnection> getConnectionFromPool(Pool pool) {
 		return pool.getConnection()
+				.onComplete(handler -> {
+					Boolean canceled = Vertx.currentContext().getLocal("CONNECTION_HANDLER_CANCELED");
+					if (handler.result() != null && canceled != null && canceled) {
+						handler.result().close();
+					}
+				})
 				.toCompletionStage().thenApply( this::newConnection );
 	}
 
